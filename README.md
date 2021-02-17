@@ -18,8 +18,9 @@ A simulation of users participating in a fixed number of tasks.
 ## To run
 1. Install mesa package from https://mesa.readthedocs.io/
 2. Run simulation
-
+```
     cd user_behavior # go to simulation directory
     mkdir output  # make output directory
 
     python UserModel.py
+```
