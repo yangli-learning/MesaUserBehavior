@@ -186,8 +186,8 @@ def compute_cond_entropy(model,normalizer= "asymmetric"):
 
 def singleRun():
     task_size = 3 # max user per task
-    N=150 # number of users
-    p_part=0.8
+    N=100 # number of users
+    p_part=1
     queue_size = 12
     model = UserModel(N,10,10,
                     max_agent_per_cell = task_size,
@@ -200,7 +200,6 @@ def singleRun():
         model.step()
 
     # get final position of agents
-
     agent_counts = np.zeros((model.grid.width, model.grid.height))
     for cell in model.grid.coord_iter():
         cell_content, x, y = cell
@@ -214,7 +213,6 @@ def singleRun():
 
     # plot the conditional entropy score
     cond_entropy = model.datacollector.get_model_vars_dataframe()
-    print(cond_entropy)
     cond_entropy.plot()
     plt.savefig('output/entropy_N%d_ts%d_w%d_p%f.pdf' % (N,task_size,
                                                         queue_size,p_part))
@@ -226,19 +224,6 @@ def singleRun():
     dataframe.to_csv('output/agent_pos_N%d_ts%d_w%d_p%f.csv' % (N,task_size,
                                                         queue_size,p_part))
 
-    '''
-    # plot the agent wealth
-    agent_wealth = model.datacollector.get_agent_vars_dataframe()
 
-    # get the wealth of all agents at the 99th iteration
-    end_wealth = agent_wealth.xs(99, level="Step")["Wealth"]
-    end_wealth.hist(bins=range(agent_wealth.Wealth.max()+1))
-    plt.show()
-
-    one_agent_id = 12
-    one_agent_wealth = agent_wealth.xs(one_agent_id , level="AgentID")
-    one_agent_wealth.Wealth.plot()
-    plt.show()
-    '''
 if __name__ == '__main__':
     singleRun()
