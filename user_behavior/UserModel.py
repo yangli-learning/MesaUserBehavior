@@ -51,6 +51,7 @@ class UserAgent(Agent):
         """
         move to the first available spot from visited locations in the past time
         window, ordered by visiting frequency; if no space is available,
+        move to a neighbor if model.neighbor_first is True. Otherwise,
         move to a random empty location
         """
         candidates = ValueSortedDict({pos: self.count_in_dq(self.traj_queue,pos) \
@@ -65,12 +66,20 @@ class UserAgent(Agent):
                 self.traj_queue.appendleft(pos)
 
                 break
-        candidates = [ (i,j) for i in range(self.model.grid.width) for j in range(self.model.grid.height) ]
 
+        # move to a neighboring cell if neighbors are not available
+        if not success and self.pos and self.model.neighbor_first:
+            possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True,
+                    include_center=False)
+            self.random.shuffle(possible_steps)
+            while possible_steps:
+                new_pos  = possible_steps.pop()
+                success = self.move( col=new_pos[0], row = new_pos[1])
+
+        # move to a random open location
+        candidates = [ (i,j) for i in range(self.model.grid.width) for j in range(self.model.grid.height) ]
         while not success:
-            # move to a random open location
             pos = self.random.choice(candidates)
-            #print('pos',pos)
             success = self.move( col = pos[0], row=pos[1] )
 
             if success:
@@ -110,12 +119,13 @@ class UserModel(Model):
         p_part: probability an agent will participate in a task (active=True)
     """
     def __init__(self, N,width,height,max_agent_per_cell=3,
-                 queue_size=12,p_part=1):
+                 queue_size=12,p_part=1,neighbor_first=False):
         self.num_agents = N
-        self.grid = MultiGrid(width=width, height=height, torus=False)
+        self.grid = MultiGrid(width=width, height=height, torus=True)
         self.grid.max_agent_per_cell = max_agent_per_cell
         self.queue_size=queue_size
         self.p_part = p_part
+        self.neighbor_first = neighbor_first
         self.schedule = RandomActivation(self)
         self.running = True
 
@@ -186,13 +196,15 @@ def compute_cond_entropy(model,normalizer= "asymmetric"):
 
 def singleRun():
     task_size = 3 # max user per task
-    N=100 # number of users
+    N=150 # number of users
     p_part=1
     queue_size = 12
+    neighbor_first = True
     model = UserModel(N,10,10,
                     max_agent_per_cell = task_size,
                     queue_size=queue_size,
-                    p_part=p_part
+                    p_part=p_part,
+                    neighbor_first= neighbor_first
                     )
     for iter in range(1000):
         if iter % 50==0:
@@ -210,19 +222,20 @@ def singleRun():
     plt.colorbar()
     plt.show()
 
+    param_prefix= '_N%d_ts%d_w%d_p%f'  % (N,task_size, queue_size,p_part)
+    if neighbor_first:
+        param_prefix = param_prefix+'_n'
 
     # plot the conditional entropy score
     cond_entropy = model.datacollector.get_model_vars_dataframe()
     cond_entropy.plot()
-    plt.savefig('output/entropy_N%d_ts%d_w%d_p%f.pdf' % (N,task_size,
-                                                        queue_size,p_part))
+    plt.savefig('output/entropy%s.pdf' % param_prefix)
     plt.show()
 
     # save agent position to file
     dataframe= model.datacollector.get_agent_vars_dataframe()
     print(dataframe)
-    dataframe.to_csv('output/agent_pos_N%d_ts%d_w%d_p%f.csv' % (N,task_size,
-                                                        queue_size,p_part))
+    dataframe.to_csv('output/agent_pos%s.csv' % param_prefix)
 
 
 if __name__ == '__main__':
